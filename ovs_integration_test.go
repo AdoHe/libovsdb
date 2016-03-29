@@ -4,15 +4,61 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"testing"
 	"time"
 )
 
+func TestConnectUnix(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	f, err := os.Open(DEFAULT_SOCK)
+	if err != nil {
+		t.Skip("Missing OVSDB unix socket")
+	}
+	f.Close()
+
+	timeoutChan := make(chan bool)
+	connected := make(chan bool)
+
+	go func() {
+		time.Sleep(10 * time.Second)
+		timeoutChan <- true
+	}()
+
+	go func() {
+		ovs, err := ConnectUnix("")
+		if err != nil {
+			connected <- false
+		} else {
+			connected <- false
+			ovs.Disconnect()
+		}
+	}()
+
+	select {
+	case <-timeoutChan:
+		t.Error("Connection Timed Out")
+	case b := <-connected:
+		if !b {
+			t.Error("Could not connect to OVSDB server")
+		}
+	}
+}
+
 func TestConnect(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
+
+	c, err := net.Dial("tcp", os.Getenv("DOCKER_IP")+":6640")
+	if err != nil {
+		t.Skip("NO OVSDB Connection over tcp")
+	}
+	c.Close()
 
 	timeoutChan := make(chan bool)
 	connected := make(chan bool)
@@ -44,9 +90,21 @@ func TestConnect(t *testing.T) {
 		t.Error("Connection Timed Out")
 	case b := <-connected:
 		if !b {
-			t.Error("Couldnt connect to OVSDB Server")
+			t.Error("Could not connect to OVSDB Server")
 		}
 	}
+}
+
+func getOvsClient() *OvsdbClient {
+	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
+	if err != nil {
+		ovs, err = ConnectUnix("")
+		if err != nil {
+			log.Fatalf("Failed to Connect. error: %v", err)
+			panic(err)
+		}
+	}
+	return ovs
 }
 
 func TestListDbs(t *testing.T) {
@@ -54,10 +112,7 @@ func TestListDbs(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		panic(err)
-	}
+	ovs := getOvsClient()
 	reply, err := ovs.ListDbs()
 
 	if err != nil {
@@ -77,11 +132,7 @@ func TestGetSchemas(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		panic(err)
-	}
-
+	ovs := getOvsClient()
 	var dbName string = "Open_vSwitch"
 	reply, err := ovs.GetSchema(dbName)
 
@@ -96,7 +147,7 @@ func TestGetSchemas(t *testing.T) {
 	ovs.Disconnect()
 }
 
-var bridgeName string = "gopher-br7"
+var bridgeName string = "test-br0"
 var bridgeUuid string
 
 func TestInsertTransact(t *testing.T) {
@@ -105,19 +156,15 @@ func TestInsertTransact(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		log.Fatal("Failed to Connect. error:", err)
-		panic(err)
-	}
+	ovs := getOvsClient()
 
 	// NamedUuid is used to add multiple related Operations in a single Transact operation
-	namedUuid := "gopher"
+	namedUuid := "testTrans"
 
 	externalIds := make(map[string]string)
 	externalIds["go"] = "awesome"
 	externalIds["docker"] = "made-for-each-other"
-	oMap, err := NewOvsMap(externalIds)
+	oMap, _ := NewOvsMap(externalIds)
 	// bridge row to insert
 	bridge := make(map[string]interface{})
 	bridge["name"] = bridgeName
@@ -149,6 +196,10 @@ func TestInsertTransact(t *testing.T) {
 	operations := []Operation{insertOp, mutateOp}
 	reply, err := ovs.Transact("Open_vSwitch", operations...)
 
+	if err != nil {
+		t.Errorf("failed to do transact operations")
+	}
+
 	if len(reply) < len(operations) {
 		t.Error("Number of Replies should be atleast equal to number of Operations")
 	}
@@ -179,11 +230,7 @@ func TestDeleteTransact(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		log.Fatal("Failed to Connect. error:", err)
-		panic(err)
-	}
+	ovs := getOvsClient()
 
 	// simple delete operation
 	condition := NewCondition("name", "==", bridgeName)
@@ -211,6 +258,9 @@ func TestDeleteTransact(t *testing.T) {
 	operations := []Operation{deleteOp, mutateOp}
 	reply, err := ovs.Transact("Open_vSwitch", operations...)
 
+	if err != nil {
+		t.Errorf("failed to do transact operations")
+	}
 	if len(reply) < len(operations) {
 		t.Error("Number of Replies should be atleast equal to number of Operations")
 	}
@@ -236,11 +286,7 @@ func TestMonitor(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		log.Fatal("Failed to Connect. error:", err)
-		panic(err)
-	}
+	ovs := getOvsClient()
 
 	reply, err := ovs.MonitorAll("Open_vSwitch", nil)
 
@@ -255,11 +301,7 @@ func TestNotify(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, err := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if err != nil {
-		log.Fatal("Failed to Connect. error:", err)
-		panic(err)
-	}
+	ovs := getOvsClient()
 
 	notifyEchoChan := make(chan bool)
 
@@ -294,6 +336,8 @@ func (n Notifier) Stolen([]interface{}) {
 func (n Notifier) Echo([]interface{}) {
 	n.echoChan <- true
 }
+func (n Notifier) Disconnected(client *OvsdbClient) {
+}
 
 func TestDBSchemaValidation(t *testing.T) {
 
@@ -301,11 +345,7 @@ func TestDBSchemaValidation(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, e := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if e != nil {
-		log.Fatal("Failed to Connect. error:", e)
-		panic(e)
-	}
+	ovs := getOvsClient()
 
 	bridge := make(map[string]interface{})
 	bridge["name"] = "docker-ovs"
@@ -330,11 +370,7 @@ func TestTableSchemaValidation(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, e := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if e != nil {
-		log.Fatal("Failed to Connect. error:", e)
-		panic(e)
-	}
+	ovs := getOvsClient()
 
 	bridge := make(map[string]interface{})
 	bridge["name"] = "docker-ovs"
@@ -359,11 +395,7 @@ func TestColumnSchemaInRowValidation(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, e := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if e != nil {
-		log.Fatal("Failed to Connect. error:", e)
-		panic(e)
-	}
+	ovs := getOvsClient()
 
 	bridge := make(map[string]interface{})
 	bridge["name"] = "docker-ovs"
@@ -390,11 +422,7 @@ func TestColumnSchemaInMultipleRowsValidation(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, e := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if e != nil {
-		log.Fatal("Failed to Connect. error:", e)
-		panic(e)
-	}
+	ovs := getOvsClient()
 
 	rows := make([]map[string]interface{}, 2)
 
@@ -426,11 +454,7 @@ func TestColumnSchemaValidation(t *testing.T) {
 		t.Skip()
 	}
 
-	ovs, e := Connect(os.Getenv("DOCKER_IP"), int(6640))
-	if e != nil {
-		log.Fatal("Failed to Connect. error:", e)
-		panic(e)
-	}
+	ovs := getOvsClient()
 
 	operation := Operation{
 		Op:      "select",

@@ -12,7 +12,7 @@ func TestNewGetSchemaArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `["Open_vSwitch"]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -23,7 +23,7 @@ func TestNewTransactArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `["Open_vSwitch",{"op":"insert","table":"Bridge"}]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -35,7 +35,7 @@ func TestNewMultipleTransactArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `["Open_vSwitch",{"op":"insert","table":"Bridge"},{"op":"delete","table":"Bridge"}]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -45,7 +45,7 @@ func TestNewCancelArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `[1]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -68,7 +68,7 @@ func TestNewMonitorArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `["Open_vSwitch",1,{"Bridge":{"columns":["name","ports","external_ids"],"select":{"initial":true,"insert":true,"delete":true,"modify":true}}}]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -78,7 +78,7 @@ func TestNewMonitorCancelArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `[1]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -88,7 +88,7 @@ func TestNewLockArgs(t *testing.T) {
 	argString, _ := json.Marshal(args)
 	expected := `["testId"]`
 	if string(argString) != expected {
-		t.Error("Expected: ", expected, " Got: ", string(argString))
+		t.Errorf("Expected: %s, got: %s", expected, string(argString))
 	}
 }
 
@@ -97,7 +97,7 @@ func TestEcho(t *testing.T) {
 	var reply []interface{}
 	echo(nil, req, &reply)
 	if !reflect.DeepEqual(req, reply) {
-		t.Error("Expected: ", req, " Got: ", reply)
+		t.Errorf("Expected: %v, got: %v", req, reply)
 	}
 }
 

@@ -1,18 +1,15 @@
 {
-	"ImportPath": "github.com/socketplane/libovsdb",
-	"GoVersion": "go1.3.3",
-	"Packages": [
-		"./..."
-	],
+	"ImportPath": "github.com/AdoHe/libovsdb",
+	"GoVersion": "go1.5.1",
 	"Deps": [
 		{
 			"ImportPath": "github.com/cenkalti/hub",
-			"Comment": "v1.0.0-12-g7be60e1",
-			"Rev": "7be60e186e66cd86db2d50ef2ca3778e281c87b4"
+			"Comment": "v1.0.0-14-g57d753b",
+			"Rev": "57d753b5f4856e77b3cf8ecce78c97215a7d324d"
 		},
 		{
 			"ImportPath": "github.com/cenkalti/rpc2",
-			"Rev": "44d0d95e4f529a0fe230c90d2126bd597c61148c"
+			"Rev": "2d1be381ce47537e9e076b2b76dc70933162e4e9"
 		}
 	]
 }

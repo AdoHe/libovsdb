@@ -8,16 +8,18 @@ import (
 type DatabaseSchema struct {
 	Name    string                 `json:"name"`
 	Version string                 `json:"version"`
+	CkSum   string                 `json:"cksum,omitempty"`
 	Tables  map[string]TableSchema `json:"tables"`
 }
 
 type TableSchema struct {
 	Columns map[string]ColumnSchema `json:"columns"`
+	MaxRows int                     `json:"maxRows,omitempty"`
+	IsRoot  bool                    `json:"isRoot,omitempty"`
 	Indexes [][]string              `json:"indexes,omitempty"`
 }
 
 type ColumnSchema struct {
-	Name      string      `json:"name"`
 	Type      interface{} `json:"type"`
 	Ephemeral bool        `json:"ephemeral,omitempty"`
 	Mutable   bool        `json:"mutable,omitempty"`
